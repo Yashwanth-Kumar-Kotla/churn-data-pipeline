@@ -1,0 +1,43 @@
+required_columns:
+  - user_id
+  - date
+  - sessions_last_30d
+  - avg_session_minutes
+  - days_since_last_login
+  - support_tickets
+  - plan_type
+  - churned
+
+allowed_plan_types:
+  - free
+  - basic
+  - pro
+
+value_ranges:
+  sessions_last_30d: [0, 120]
+  avg_session_minutes: [1, 180]
+  days_since_last_login: [0, 59]
+  support_tickets: [0, 50]
+
+quality_thresholds:
+  minimum_rows: 1000
+  maximum_null_rate: 0.05
+  maximum_duplicate_rate: 0.05
+  maximum_out_of_range_rate: 0.01
+  maximum_unknown_plan_rate: 0.005
+  minimum_churn_rate: 0.05
+  maximum_churn_rate: 0.60
+
+drift_thresholds:
+  minimum_rows_for_comparison: 500
+  mean_shift_standard_deviations: 0.5
+  psi: 0.2
+  category_proportion_points: 0.10
+  row_count_change: 0.50
+  churn_rate_change: 0.10
+
+training_thresholds:
+  minimum_history_rows: 1000
+  minimum_positive_labels: 100
+  random_seed: 42
+  promotion_margin_roc_auc: 0.01

@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+design_brief.md
+
+data/raw/*.csv
+data/processed/*.parquet
+data/quarantine/*
+logs/reports/*.json
+logs/pipeline.log
+state/manifest.json
+models/*
