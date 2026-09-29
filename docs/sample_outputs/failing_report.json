@@ -1,0 +1,276 @@
+{
+  "checks": [
+    {
+      "name": "required_columns",
+      "observed": [
+        "support_tickets"
+      ],
+      "passed": false,
+      "severity": "error",
+      "stage": "raw_schema",
+      "threshold": [
+        "user_id",
+        "date",
+        "sessions_last_30d",
+        "avg_session_minutes",
+        "days_since_last_login",
+        "support_tickets",
+        "plan_type",
+        "churned"
+      ]
+    },
+    {
+      "name": "extra_columns",
+      "observed": [],
+      "passed": true,
+      "severity": "warning",
+      "stage": "raw_schema",
+      "threshold": []
+    },
+    {
+      "name": "minimum_row_count",
+      "observed": 2015,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 1000
+    },
+    {
+      "name": "null_rate:user_id",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:date",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:sessions_last_30d",
+      "observed": 0.34987593052109184,
+      "passed": false,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:avg_session_minutes",
+      "observed": 0.019851116625310174,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:days_since_last_login",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:plan_type",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:churned",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "duplicate_rate",
+      "observed": 0.0034739454094292804,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "out_of_range_rate:sessions_last_30d",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.01
+    },
+    {
+      "name": "out_of_range_rate:avg_session_minutes",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.01
+    },
+    {
+      "name": "out_of_range_rate:days_since_last_login",
+      "observed": 0.02481389578163772,
+      "passed": false,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.01
+    },
+    {
+      "name": "unknown_plan_type_rate",
+      "observed": 0.20148883374689827,
+      "passed": false,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.005
+    },
+    {
+      "name": "valid_churn_labels",
+      "observed": 0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0
+    },
+    {
+      "name": "plausible_churn_rate",
+      "observed": 0.2863523573200993,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": [
+        0.05,
+        0.6
+      ]
+    },
+    {
+      "name": "date_matches_filename",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.0
+    },
+    {
+      "name": "zero_variance:sessions_last_30d",
+      "observed": 11.456143317840668,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.0
+    },
+    {
+      "name": "zero_variance:avg_session_minutes",
+      "observed": 36.082178597563114,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.0
+    },
+    {
+      "name": "zero_variance:days_since_last_login",
+      "observed": 317.5382929912449,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.0
+    },
+    {
+      "name": "conflicting_user_ids",
+      "observed": 8,
+      "passed": false,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0
+    },
+    {
+      "name": "mean_shift:avg_session_minutes",
+      "observed": 0.6350887817165937,
+      "passed": false,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.5
+    },
+    {
+      "name": "psi:avg_session_minutes",
+      "observed": 0.37879671953173477,
+      "passed": false,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.2
+    },
+    {
+      "name": "mean_shift:days_since_last_login",
+      "observed": 0.10104851673530532,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.5
+    },
+    {
+      "name": "psi:days_since_last_login",
+      "observed": 0.01161308392168791,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.2
+    },
+    {
+      "name": "mean_shift:sessions_last_30d",
+      "observed": 1.0040194111396903,
+      "passed": false,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.5
+    },
+    {
+      "name": "psi:sessions_last_30d",
+      "observed": 1.1520748331485164,
+      "passed": false,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.2
+    },
+    {
+      "name": "plan_type_proportion_shift",
+      "observed": 0.205,
+      "passed": false,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.1
+    },
+    {
+      "name": "row_count_shift",
+      "observed": 0.0075,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.5
+    },
+    {
+      "name": "churn_rate_shift",
+      "observed": 0.04385235732009929,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.1
+    },
+    {
+      "name": "date_gap",
+      "observed": 1,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 1
+    }
+  ],
+  "file_date": "2026-09-27",
+  "passed": false
+}

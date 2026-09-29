@@ -1,0 +1,218 @@
+{
+  "checks": [
+    {
+      "name": "required_columns",
+      "observed": [],
+      "passed": true,
+      "severity": "error",
+      "stage": "raw_schema",
+      "threshold": [
+        "user_id",
+        "date",
+        "sessions_last_30d",
+        "avg_session_minutes",
+        "days_since_last_login",
+        "support_tickets",
+        "plan_type",
+        "churned"
+      ]
+    },
+    {
+      "name": "extra_columns",
+      "observed": [],
+      "passed": true,
+      "severity": "warning",
+      "stage": "raw_schema",
+      "threshold": []
+    },
+    {
+      "name": "minimum_row_count",
+      "observed": 2015,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 1000
+    },
+    {
+      "name": "null_rate:user_id",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:date",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:sessions_last_30d",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:avg_session_minutes",
+      "observed": 0.019851116625310174,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:days_since_last_login",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:support_tickets",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:plan_type",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "null_rate:churned",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "duplicate_rate",
+      "observed": 0.007444168734491315,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.05
+    },
+    {
+      "name": "out_of_range_rate:sessions_last_30d",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.01
+    },
+    {
+      "name": "out_of_range_rate:avg_session_minutes",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.01
+    },
+    {
+      "name": "out_of_range_rate:days_since_last_login",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.01
+    },
+    {
+      "name": "out_of_range_rate:support_tickets",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.01
+    },
+    {
+      "name": "unknown_plan_type_rate",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.005
+    },
+    {
+      "name": "valid_churn_labels",
+      "observed": 0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0
+    },
+    {
+      "name": "plausible_churn_rate",
+      "observed": 0.284863523573201,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": [
+        0.05,
+        0.6
+      ]
+    },
+    {
+      "name": "date_matches_filename",
+      "observed": 0.0,
+      "passed": true,
+      "severity": "error",
+      "stage": "pre_imputation",
+      "threshold": 0.0
+    },
+    {
+      "name": "zero_variance:sessions_last_30d",
+      "observed": 12.088929355553311,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.0
+    },
+    {
+      "name": "zero_variance:avg_session_minutes",
+      "observed": 35.912598805728486,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.0
+    },
+    {
+      "name": "zero_variance:days_since_last_login",
+      "observed": 301.0310728128904,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.0
+    },
+    {
+      "name": "zero_variance:support_tickets",
+      "observed": 1.012909632571996,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0.0
+    },
+    {
+      "name": "conflicting_user_ids",
+      "observed": 0,
+      "passed": true,
+      "severity": "warning",
+      "stage": "pre_imputation",
+      "threshold": 0
+    }
+  ],
+  "file_date": "2026-09-24",
+  "passed": true
+}
