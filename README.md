@@ -51,9 +51,44 @@ The synthetic label comes from a logistic probability. More days since login and
 ### Pipeline flow
 
 ```text
-raw CSV -> schema and quality checks -> clean -> Parquet -> training gate -> train and compare
-                  |
-                  -> report -> quarantine
+                         data/raw/user_activity_YYYY-MM-DD.csv
+                                            |
+                                            v
+                    filename date + SHA-256 hash + manifest lookup
+                               |                         |
+                               |                         -> known hash: skip
+                               v
+                            read CSV
+                               |
+                 unreadable or empty? -> report -> quarantine -> manifest
+                               |
+                               v
+       raw schema checks + pre-imputation quality and drift checks
+                               |
+                  error-severity failure? -> report -> quarantine -> manifest
+                               |
+                               v
+      normalize plan type, drop exact duplicates, repair small defects
+                               |
+                               v
+                  atomic Parquet write -> processed history -> manifest
+                               |
+                               v
+                          training gate
+                  /                           \
+        gate denies training                     gate allows training
+                  |                                      |
+                  v                                      v
+             log skip reason          train challenger + dummy baseline
+                                                     |
+                                                     v
+                     current champion and challenger score the same holdout
+                                                     |
+                                                     v
+                             promote only when improvement clears the margin
+                                                     |
+                                                     v
+                                  versioned model artifacts + metrics JSON
 ```
 
 The file date comes from the filename, never from the system clock. Files are processed in date order. Each SHA-256 hash is recorded in `state/manifest.json`, so identical reruns are skipped. A corrected file with the same name but new contents has a new hash and is processed again.
