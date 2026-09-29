@@ -213,6 +213,18 @@
       "threshold": 0
     }
   ],
+  "cleaning_actions": {
+    "avg_session_minutes_imputed": 40,
+    "avg_session_minutes_set_to_null": 0,
+    "days_since_last_login_imputed": 0,
+    "days_since_last_login_set_to_null": 0,
+    "exact_duplicates_dropped": 15,
+    "rows_missing_user_or_plan_dropped": 0,
+    "sessions_last_30d_imputed": 0,
+    "sessions_last_30d_set_to_null": 0,
+    "support_tickets_imputed": 0,
+    "support_tickets_set_to_null": 0
+  },
   "file_date": "2026-09-24",
   "passed": true
 }

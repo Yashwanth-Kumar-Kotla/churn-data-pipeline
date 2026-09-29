@@ -1,6 +1,6 @@
-PYTHON = .venv/bin/python
+PYTHON ?= .venv/bin/python
 
-.PHONY: setup generate demo test clean-demo
+.PHONY: setup generate demo run test clean-demo
 
 setup:
 	python3 -m venv .venv
@@ -13,6 +13,9 @@ generate:
 demo: clean-demo generate
 	$(PYTHON) -m src.pipeline run
 
+run:
+	$(PYTHON) -m src.pipeline run
+
 test:
 	$(PYTHON) -m pytest -q -p no:cacheprovider
 
@@ -20,4 +23,3 @@ clean-demo:
 	rm -f data/raw/*.csv data/processed/*.parquet data/quarantine/*.csv
 	rm -f logs/reports/*.json logs/pipeline.log state/manifest.json
 	rm -f models/*.joblib models/*.json
-

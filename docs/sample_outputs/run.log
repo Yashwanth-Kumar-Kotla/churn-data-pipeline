@@ -1,8 +1,10 @@
-2026-09-29 17:35:15,742 INFO processed user_activity_2026-09-24.csv, training outcome: trained and evaluated
-2026-09-29 17:35:15,805 INFO processed user_activity_2026-09-25.csv, training outcome: trained and evaluated
-2026-09-29 17:35:15,852 INFO processed user_activity_2026-09-26.csv, training outcome: trained and evaluated
-2026-09-29 17:35:15,877 INFO quarantining user_activity_2026-09-27.csv after validation failure
-2026-09-29 17:35:15,882 INFO quarantining user_activity_2026-09-28.csv after validation failure
-2026-09-29 17:35:15,931 INFO processed user_activity_2026-09-29.csv, training outcome: trained and evaluated
-2026-09-29 17:35:15,931 INFO run complete: 4 processed, 2 quarantined
-2026-09-29 17:35:33,462 INFO nothing to process
+2026-09-29 18:52:39,511 INFO processed user_activity_2026-09-24.csv, challenger ROC AUC 0.843 vs first champion, promoted
+2026-09-29 18:52:39,575 INFO processed user_activity_2026-09-25.csv, challenger ROC AUC 0.812 vs champion 0.814, kept champion
+2026-09-29 18:52:39,611 INFO user_activity_2026-09-26.csv passed with warnings: mean_shift:avg_session_minutes, psi:avg_session_minutes, mean_shift:sessions_last_30d, psi:sessions_last_30d
+2026-09-29 18:52:39,624 INFO processed user_activity_2026-09-26.csv, challenger ROC AUC 0.787 vs champion 0.787, kept champion
+2026-09-29 18:52:39,651 INFO quarantining user_activity_2026-09-27.csv, failed checks: required_columns, null_rate:sessions_last_30d, out_of_range_rate:days_since_last_login, unknown_plan_type_rate
+2026-09-29 18:52:39,657 INFO quarantining user_activity_2026-09-28.csv, failed checks: minimum_row_count
+2026-09-29 18:52:39,694 INFO user_activity_2026-09-29.csv passed with warnings: mean_shift:avg_session_minutes, psi:avg_session_minutes, mean_shift:sessions_last_30d, psi:sessions_last_30d, date_gap
+2026-09-29 18:52:39,709 INFO processed user_activity_2026-09-29.csv, challenger ROC AUC 0.814 vs champion 0.813, kept champion
+2026-09-29 18:52:39,710 INFO run complete: 4 processed, 2 quarantined
+2026-09-29 18:52:47,806 INFO nothing to process

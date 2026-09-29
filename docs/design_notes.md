@@ -26,7 +26,7 @@ The raw CSV is checked for required fields before cleaning. Numeric coercion use
 
 The validation profile is built after harmless normalization but before imputation. It captures nulls, exact duplicates, invalid ranges, normalized plan types, labels, dates, and summary values. That sequence matters. If a file has many missing sessions, it fails because of the original defect rate even though a median exists.
 
-Cleaning trims and lowercases `plan_type`, drops only exact duplicate rows, turns impossible configured values into missing values, and imputes small numeric missing rates with that file's median. It does not guess which of two conflicting records for one user is correct. That situation is recorded as a warning.
+Cleaning trims and lowercases `plan_type`, drops only exact duplicate rows, turns impossible configured values into missing values, and imputes small numeric missing rates with that file's median. It drops and counts rows missing `user_id` or `plan_type` when their pre-clean null rates pass the gate, since those rows cannot enter training safely. It does not guess which of two conflicting records for one user is correct. That situation is recorded as a warning.
 
 Range checking catches impossible values, not ordinary in-range outliers. Values inside configured bounds are retained. Small null repair can still be problematic during real distribution changes, so the report retains cleaning counts and the pre-imputation profile.
 
@@ -44,7 +44,7 @@ If the manifest is lost, the pipeline can reprocess raw files. Date-keyed Parque
 
 ## Training decisions
 
-There is one gate function. It requires a passing report, successful processed storage, enough accumulated rows, and enough positive labels. The gate has a spy test that asserts training is never called after a failed validation result.
+There is one gate function. It is reached after a successful processed write and requires a passing report, enough accumulated rows, and enough positive labels. An end-to-end spy test asserts training is never called for a quarantined file. The manifest marks a passing file complete only after training finishes or is deliberately skipped, so an unexpected training failure can be retried.
 
 The first usable training run uses a group split by `user_id`. Once multiple dates exist, the latest valid date is held out. A random row split would leak recurring users across train and test data. A holdout with only one class is skipped because ROC AUC would be undefined.
 

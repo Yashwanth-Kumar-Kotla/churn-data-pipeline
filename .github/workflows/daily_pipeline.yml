@@ -1,6 +1,8 @@
 name: Daily synthetic churn pipeline
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: "0 14 * * *"
@@ -27,4 +29,3 @@ jobs:
             logs/reports/
             logs/pipeline.log
             models/metrics_*.json
-

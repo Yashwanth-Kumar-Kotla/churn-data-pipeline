@@ -24,10 +24,10 @@ make test
 To rerun the pipeline without regenerating data:
 
 ```bash
-.venv/bin/python -m src.pipeline run
+make run
 ```
 
-A rerun after a completed demo logs `nothing to process` and exits successfully.
+A rerun after a completed demo logs `nothing to process` and exits successfully. The Makefile uses `.venv/bin/python` by default, and you can override it with `make test PYTHON=python` if you already activated an environment.
 
 ## What the demo does
 
@@ -40,7 +40,7 @@ The generator creates six deterministic daily files in `data/raw`.
 5. Sep 28 fails the minimum-row check and moves to quarantine.
 6. Sep 29 passes and resumes training without manual cleanup.
 
-The normal files have realistic small defects: roughly 2% missing session minutes, 0.75% exact duplicates, and 1% plan-type casing or whitespace variants. Those defects are repaired and reported. They are not failures.
+The normal files have realistic small defects: roughly 2% missing session minutes, 0.75% exact duplicates, and 1% plan-type casing or whitespace variants. Those defects are repaired and reported. They are not failures. If a passing file has a few rows without `user_id` or `plan_type`, cleaning drops and counts those rows because training requires both values.
 
 The bad Sep 27 file has a missing required column, 35% missing sessions, negative login-day values, and an unknown `PRO_v2` plan. It demonstrates that the checks fail independently and together.
 
@@ -97,7 +97,7 @@ For a passing file, the pipeline writes a date-keyed Parquet file atomically. Fo
 
 ### Why the gate can be trusted
 
-The most important choice is that quality checks see values before imputation. For example, a file with 35% missing `sessions_last_30d` values fails before median imputation could make it look complete. Cleaning repairs small defects. Validation decides whether the file is acceptable at all.
+The most important choice is that quality checks see values before imputation. For example, a file with 35% missing `sessions_last_30d` values fails before median imputation could make it look complete. Cleaning repairs small defects and counts any rows dropped for missing training keys. Validation decides whether the file is acceptable at all.
 
 Training is allowed only when all three conditions are true:
 
@@ -146,7 +146,7 @@ Real outputs from a completed run are committed under [`docs/sample_outputs`](do
 
 `config.yaml` holds all active validation, drift, training, and promotion thresholds. The generator's data distributions are intentionally kept in `scripts/generate_data.py`, where their relationship to the scenario is easy to inspect.
 
-The GitHub Actions workflow runs on demand and on a daily UTC schedule. It regenerates synthetic inputs, runs the demo and tests, then uploads reports and metrics as an artifact. It does not claim to receive live production data.
+The GitHub Actions workflow runs on pushes to `main`, on demand, and on a daily UTC schedule. It regenerates synthetic inputs, runs the demo and tests, then uploads reports and metrics as an artifact. It does not claim to receive live production data.
 
 ## Assumptions
 
