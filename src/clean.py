@@ -47,9 +47,13 @@ def clean_frame(frame: pd.DataFrame, config: dict[str, Any]) -> CleanResult:
     cleaned = prepare_frame(frame)
     actions: dict[str, int] = {}
 
+    key_columns = [column for column in ("user_id", "plan_type") if column in cleaned]
+    missing_key = cleaned[key_columns].isna().any(axis=1)
+    actions["rows_missing_user_or_plan_dropped"] = int(missing_key.sum())
+    cleaned = cleaned.loc[~missing_key].copy()
+
     duplicate_rows = int(cleaned.duplicated().sum())
-    if duplicate_rows:
-        cleaned = cleaned.drop_duplicates().copy()
+    cleaned = cleaned.drop_duplicates().copy()
     actions["exact_duplicates_dropped"] = duplicate_rows
 
     ranges = config["value_ranges"]
@@ -78,4 +82,3 @@ def clean_frame(frame: pd.DataFrame, config: dict[str, Any]) -> CleanResult:
     if "avg_session_minutes" in cleaned:
         cleaned["avg_session_minutes"] = cleaned["avg_session_minutes"].astype("float64")
     return CleanResult(frame=cleaned, actions=actions)
-

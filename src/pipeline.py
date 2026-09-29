@@ -8,7 +8,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pandas as pd
 
@@ -36,27 +36,18 @@ class GateDecision:
 
 def training_gate(
     report: ValidationReport,
-    storage_succeeded: bool,
     history_rows: int,
     history_positive_labels: int,
     config: dict[str, Any],
 ) -> GateDecision:
     if not report.passed:
         return GateDecision(False, "validation has error-severity failures")
-    if not storage_succeeded:
-        return GateDecision(False, "processed data was not stored")
     thresholds = config["training_thresholds"]
     if history_rows < thresholds["minimum_history_rows"]:
         return GateDecision(False, "processed history has too few rows")
     if history_positive_labels < thresholds["minimum_positive_labels"]:
         return GateDecision(False, "processed history has too few positive labels")
     return GateDecision(True, "validation passed and processed history is sufficient")
-
-
-def run_training_if_allowed(decision: GateDecision, trainer: Callable[[], None]) -> GateDecision:
-    if decision.allowed:
-        trainer()
-    return decision
 
 
 @dataclass(frozen=True)
@@ -148,8 +139,13 @@ def quarantine_with_report(
     return FileOutcome(raw_file.path, "quarantined")
 
 
-def process_file(raw_file: RawFile, base_dir: Path, config: dict[str, Any], logger: logging.Logger) -> FileOutcome:
-    file_hash = sha256_file(raw_file.path)
+def process_file(
+    raw_file: RawFile,
+    file_hash: str,
+    base_dir: Path,
+    config: dict[str, Any],
+    logger: logging.Logger,
+) -> FileOutcome:
     try:
         raw_frame = read_raw_csv(raw_file.path)
     except (OSError, UnicodeError, pd.errors.EmptyDataError, pd.errors.ParserError) as error:
@@ -165,37 +161,57 @@ def process_file(raw_file: RawFile, base_dir: Path, config: dict[str, Any], logg
     reference_frame, reference_date = reference_before(base_dir, raw_file.file_date)
     report = validate_frame(raw_frame, raw_file.file_date, config, reference_frame, reference_date)
     if not report.passed:
-        logger.info("quarantining %s after validation failure", raw_file.path.name)
+        failed = [check.name for check in report.checks if check.severity == "error" and not check.passed]
+        logger.info("quarantining %s, failed checks: %s", raw_file.path.name, ", ".join(failed))
         return quarantine_with_report(raw_file, file_hash, report, base_dir, "validation_failed")
 
     cleaned = clean_frame(raw_frame, config)
+    if cleaned.frame.empty:
+        raise ValueError(f"cleaning removed every row in {raw_file.path.name}")
     destination = processed_path(base_dir, raw_file.file_date)
     write_parquet(cleaned.frame, destination)
     saved_report_path = report_path(base_dir, raw_file, file_hash)
-    write_report(saved_report_path, report.to_dict())
-    record_manifest(
-        base_dir / "state" / "manifest.json",
-        {
-            "filename": raw_file.path.name,
-            "sha256": file_hash,
-            "file_date": raw_file.file_date.isoformat(),
-            "status": "passed",
-            "report_path": str(saved_report_path),
-            "processed_path": str(destination),
-            "cleaning_actions": cleaned.actions,
-        },
-    )
+    report_payload = report.to_dict()
+    report_payload["cleaning_actions"] = cleaned.actions
+    write_report(saved_report_path, report_payload)
+    manifest_entry = {
+        "filename": raw_file.path.name,
+        "sha256": file_hash,
+        "file_date": raw_file.file_date.isoformat(),
+        "status": "passed",
+        "report_path": str(saved_report_path),
+        "processed_path": str(destination),
+        "cleaning_actions": cleaned.actions,
+    }
     history = processed_history(base_dir)
-    decision = training_gate(report, True, len(history), int(history["churned"].sum()), config)
+    decision = training_gate(report, len(history), int(history["churned"].sum()), config)
+    warnings = [check.name for check in report.checks if check.severity == "warning" and not check.passed]
+    if warnings:
+        logger.info("%s passed with warnings: %s", raw_file.path.name, ", ".join(warnings))
     if decision.allowed:
         training = train_and_evaluate(history, base_dir / "models", config)
-        logger.info("processed %s, training outcome: %s", raw_file.path.name, training.reason)
+        if training.trained:
+            challenger = training.metrics["challenger"]["roc_auc"]
+            champion = training.metrics["champion"]
+            comparison = "first champion" if champion is None else f"champion {champion['roc_auc']:.3f}"
+            promotion = "promoted" if training.promoted else "kept champion"
+            logger.info(
+                "processed %s, challenger ROC AUC %.3f vs %s, %s",
+                raw_file.path.name,
+                challenger,
+                comparison,
+                promotion,
+            )
+        else:
+            logger.info("processed %s, training skipped: %s", raw_file.path.name, training.reason)
+        record_manifest(base_dir / "state" / "manifest.json", manifest_entry)
         return FileOutcome(raw_file.path, "processed", training.reason)
     logger.info("processed %s, training skipped: %s", raw_file.path.name, decision.reason)
+    record_manifest(base_dir / "state" / "manifest.json", manifest_entry)
     return FileOutcome(raw_file.path, "processed", decision.reason)
 
 
-def selected_files(base_dir: Path, logger: logging.Logger) -> tuple[list[RawFile], list[Path]]:
+def selected_files(base_dir: Path, logger: logging.Logger) -> tuple[list[tuple[RawFile, str]], list[Path]]:
     raw_dir = base_dir / "data" / "raw"
     valid: list[RawFile] = []
     invalid: list[Path] = []
@@ -205,16 +221,17 @@ def selected_files(base_dir: Path, logger: logging.Logger) -> tuple[list[RawFile
         except ValueError:
             invalid.append(path)
     manifest = load_manifest(base_dir / "state" / "manifest.json")
+    hashes = {item.path: sha256_file(item.path) for item in valid}
     by_date: dict[date, list[RawFile]] = defaultdict(list)
     for item in valid:
         by_date[item.file_date].append(item)
-    selected: list[RawFile] = []
+    selected: list[tuple[RawFile, str]] = []
     for file_date, candidates in by_date.items():
         newest = max(candidates, key=lambda item: (item.path.stat().st_mtime_ns, item.path.name))
         for candidate in candidates:
             if candidate == newest:
                 continue
-            file_hash = sha256_file(candidate.path)
+            file_hash = hashes[candidate.path]
             if hash_is_recorded(manifest, file_hash):
                 continue
             logger.warning("skipping older same-date candidate %s", candidate.path.name)
@@ -227,9 +244,9 @@ def selected_files(base_dir: Path, logger: logging.Logger) -> tuple[list[RawFile
                     "status": "superseded",
                 },
             )
-        if not hash_is_recorded(manifest, sha256_file(newest.path)):
-            selected.append(newest)
-    return sorted(selected, key=lambda item: (item.file_date, item.path.name)), invalid
+        if not hash_is_recorded(manifest, hashes[newest.path]):
+            selected.append((newest, hashes[newest.path]))
+    return sorted(selected, key=lambda item: (item[0].file_date, item[0].path.name)), invalid
 
 
 def run_pipeline(base_dir: Path) -> list[FileOutcome]:
@@ -245,8 +262,8 @@ def run_pipeline(base_dir: Path) -> list[FileOutcome]:
     if not selected and not invalid:
         logger.info("nothing to process")
         return outcomes
-    for raw_file in selected:
-        outcomes.append(process_file(raw_file, base_dir, config, logger))
+    for raw_file, file_hash in selected:
+        outcomes.append(process_file(raw_file, file_hash, base_dir, config, logger))
     logger.info("run complete: %s processed, %s quarantined", sum(item.status == "processed" for item in outcomes), sum(item.status == "quarantined" for item in outcomes))
     return outcomes
 
