@@ -1,0 +1,30 @@
+name: Daily synthetic churn pipeline
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 14 * * *"
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: make setup
+      - name: Run synthetic daily pipeline demo
+        run: make demo
+      - name: Run tests
+        run: make test
+      - name: Upload reports and metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-output
+          path: |
+            logs/reports/
+            logs/pipeline.log
+            models/metrics_*.json
+
