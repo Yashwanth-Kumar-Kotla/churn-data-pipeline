@@ -8,7 +8,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -21,25 +21,28 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def atomic_json(path: Path, payload: dict[str, Any]) -> None:
+def atomic_write(path: Path, writer: Callable[[Path], None]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False, encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, sort_keys=True)
-        handle.write("\n")
+    with tempfile.NamedTemporaryFile(dir=path.parent, suffix=path.suffix, delete=False) as handle:
         temporary_path = Path(handle.name)
-    os.replace(temporary_path, path)
+    try:
+        writer(temporary_path)
+        os.replace(temporary_path, path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def atomic_json(path: Path, payload: dict[str, Any]) -> None:
+    def write_json(temporary_path: Path) -> None:
+        with temporary_path.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+
+    atomic_write(path, write_json)
 
 
 def write_parquet(frame: pd.DataFrame, path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(dir=path.parent, suffix=".parquet", delete=False) as handle:
-        temporary_path = Path(handle.name)
-    try:
-        frame.to_parquet(temporary_path, index=False)
-        os.replace(temporary_path, path)
-    except Exception:
-        temporary_path.unlink(missing_ok=True)
-        raise
+    atomic_write(path, lambda temporary_path: frame.to_parquet(temporary_path, index=False))
 
 
 def load_manifest(path: Path) -> dict[str, list[dict[str, Any]]]:
@@ -68,4 +71,3 @@ def quarantine_raw_file(raw_path: Path, quarantine_dir: Path, file_hash: str) ->
     destination = quarantine_dir / f"{raw_path.stem}_{file_hash[:12]}{raw_path.suffix}"
     shutil.move(str(raw_path), destination)
     return destination
-

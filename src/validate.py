@@ -39,15 +39,14 @@ class ValidationReport:
         }
 
 
-def result(
+def at_most(
     name: str,
-    severity: str,
-    observed: Any,
-    threshold: Any,
-    passed: bool,
-    stage: str,
+    observed: float,
+    limit: float,
+    severity: str = "error",
+    stage: str = "pre_imputation",
 ) -> CheckResult:
-    return CheckResult(name, severity, observed, threshold, passed, stage)
+    return CheckResult(name, severity, observed, limit, observed <= limit, stage)
 
 
 def psi(reference: pd.Series, current: pd.Series) -> float | None:
@@ -79,82 +78,47 @@ def validate_frame(
     required_columns = config["required_columns"]
     raw_columns = [str(column).strip() for column in raw_frame.columns]
     missing = sorted(set(required_columns) - set(raw_columns))
-    checks.append(
-        result("required_columns", "error", missing, required_columns, not missing, "raw_schema")
-    )
+    checks.append(CheckResult("required_columns", "error", missing, required_columns, not missing, "raw_schema"))
 
     extra = sorted(set(raw_columns) - set(required_columns))
-    checks.append(result("extra_columns", "warning", extra, [], not extra, "raw_schema"))
+    checks.append(CheckResult("extra_columns", "warning", extra, [], not extra, "raw_schema"))
     frame = prepare_frame(raw_frame)
     quality = config["quality_thresholds"]
     rows = len(frame)
-    checks.append(
-        result("minimum_row_count", "error", rows, quality["minimum_rows"], rows >= quality["minimum_rows"], "pre_imputation")
-    )
+    checks.append(CheckResult(
+        "minimum_row_count", "error", rows, quality["minimum_rows"],
+        rows >= quality["minimum_rows"], "pre_imputation",
+    ))
 
     for column in required_columns:
         if column not in frame:
             continue
         null_rate = float(frame[column].isna().mean()) if rows else 1.0
-        checks.append(
-            result(
-                f"null_rate:{column}",
-                "error",
-                null_rate,
-                quality["maximum_null_rate"],
-                null_rate <= quality["maximum_null_rate"],
-                "pre_imputation",
-            )
-        )
+        checks.append(at_most(f"null_rate:{column}", null_rate, quality["maximum_null_rate"]))
 
     duplicate_rate = float(frame.duplicated().mean()) if rows else 0.0
-    checks.append(
-        result(
-            "duplicate_rate",
-            "error",
-            duplicate_rate,
-            quality["maximum_duplicate_rate"],
-            duplicate_rate <= quality["maximum_duplicate_rate"],
-            "pre_imputation",
-        )
-    )
+    checks.append(at_most("duplicate_rate", duplicate_rate, quality["maximum_duplicate_rate"]))
 
     for column, (minimum, maximum) in config["value_ranges"].items():
         if column not in frame:
             continue
         values = frame[column]
         invalid_rate = float((values.notna() & ~values.between(minimum, maximum)).mean()) if rows else 0.0
-        checks.append(
-            result(
-                f"out_of_range_rate:{column}",
-                "error",
-                invalid_rate,
-                quality["maximum_out_of_range_rate"],
-                invalid_rate <= quality["maximum_out_of_range_rate"],
-                "pre_imputation",
-            )
-        )
+        checks.append(at_most(
+            f"out_of_range_rate:{column}", invalid_rate, quality["maximum_out_of_range_rate"]
+        ))
 
     if "plan_type" in frame:
         unknown_rate = float((~frame["plan_type"].isin(config["allowed_plan_types"]) & frame["plan_type"].notna()).mean())
-        checks.append(
-            result(
-                "unknown_plan_type_rate",
-                "error",
-                unknown_rate,
-                quality["maximum_unknown_plan_rate"],
-                unknown_rate <= quality["maximum_unknown_plan_rate"],
-                "pre_imputation",
-            )
-        )
+        checks.append(at_most("unknown_plan_type_rate", unknown_rate, quality["maximum_unknown_plan_rate"]))
 
     if "churned" in frame:
         invalid_labels = int((~frame["churned"].isin([0, 1])).sum())
-        checks.append(result("valid_churn_labels", "error", invalid_labels, 0, invalid_labels == 0, "pre_imputation"))
+        checks.append(at_most("valid_churn_labels", invalid_labels, 0))
         valid_labels = frame.loc[frame["churned"].isin([0, 1]), "churned"]
         churn_rate = float(valid_labels.mean()) if not valid_labels.empty else None
         checks.append(
-            result(
+            CheckResult(
                 "plausible_churn_rate",
                 "error",
                 churn_rate,
@@ -166,12 +130,14 @@ def validate_frame(
 
     if "date" in frame:
         mismatch_rate = float((frame["date"] != file_date).mean()) if rows else 1.0
-        checks.append(result("date_matches_filename", "error", mismatch_rate, 0.0, mismatch_rate == 0.0, "pre_imputation"))
+        checks.append(at_most("date_matches_filename", mismatch_rate, 0.0))
 
     numeric_features = [column for column in NUMERIC_COLUMNS if column not in {"user_id", "churned"} and column in frame]
     for column in numeric_features:
         variance = float(frame[column].dropna().var()) if frame[column].notna().sum() > 1 else 0.0
-        checks.append(result(f"zero_variance:{column}", "warning", variance, 0.0, variance > 0.0, "pre_imputation"))
+        checks.append(CheckResult(
+            f"zero_variance:{column}", "warning", variance, 0.0, variance > 0.0, "pre_imputation"
+        ))
 
     if "user_id" in frame:
         feature_columns = [column for column in required_columns if column not in {"user_id", "date"} and column in frame]
@@ -179,7 +145,7 @@ def validate_frame(
         for _, group in frame.dropna(subset=["user_id"]).groupby("user_id"):
             if len(group) > 1 and group[feature_columns].drop_duplicates().shape[0] > 1:
                 conflicts += 1
-        checks.append(result("conflicting_user_ids", "warning", conflicts, 0, conflicts == 0, "pre_imputation"))
+        checks.append(at_most("conflicting_user_ids", conflicts, 0, "warning"))
 
     if reference_frame is not None:
         checks.extend(drift_checks(frame, reference_frame, config, file_date, reference_date))
@@ -195,32 +161,50 @@ def drift_checks(
 ) -> list[CheckResult]:
     checks: list[CheckResult] = []
     thresholds = config["drift_thresholds"]
-    if len(frame) < thresholds["minimum_rows_for_comparison"] or len(reference_frame) < thresholds["minimum_rows_for_comparison"]:
-        return [result("drift_reference", "warning", "skipped: insufficient rows", thresholds["minimum_rows_for_comparison"], True, "pre_imputation")]
+    minimum_rows = thresholds["minimum_rows_for_comparison"]
+    if len(frame) < minimum_rows or len(reference_frame) < minimum_rows:
+        return [CheckResult(
+            "drift_reference", "warning", "skipped: insufficient rows", minimum_rows,
+            True, "pre_imputation",
+        )]
 
     reference = prepare_frame(reference_frame)
     numeric_columns = set(config["value_ranges"]) & set(frame) & set(reference)
     for column in sorted(numeric_columns):
         reference_std = float(reference[column].std())
         if reference_std == 0 or np.isnan(reference_std):
-            checks.append(result(f"mean_shift:{column}", "warning", "skipped: zero reference variance", thresholds["mean_shift_standard_deviations"], True, "pre_imputation"))
+            checks.append(CheckResult(
+                f"mean_shift:{column}", "warning", "skipped: zero reference variance",
+                thresholds["mean_shift_standard_deviations"], True, "pre_imputation",
+            ))
         else:
             shift = abs(float(frame[column].mean()) - float(reference[column].mean())) / reference_std
-            checks.append(result(f"mean_shift:{column}", "warning", shift, thresholds["mean_shift_standard_deviations"], shift <= thresholds["mean_shift_standard_deviations"], "pre_imputation"))
+            checks.append(at_most(
+                f"mean_shift:{column}", shift, thresholds["mean_shift_standard_deviations"], "warning"
+            ))
         value = psi(reference[column], frame[column])
-        checks.append(result(f"psi:{column}", "warning", value if value is not None else "skipped", thresholds["psi"], value is None or value <= thresholds["psi"], "pre_imputation"))
+        if value is None:
+            checks.append(CheckResult(f"psi:{column}", "warning", "skipped", thresholds["psi"], True, "pre_imputation"))
+        else:
+            checks.append(at_most(f"psi:{column}", value, thresholds["psi"], "warning"))
 
     if "plan_type" in frame and "plan_type" in reference:
         categories = set(frame["plan_type"].dropna()) | set(reference["plan_type"].dropna())
-        shift = max(abs(float((frame["plan_type"] == category).mean()) - float((reference["plan_type"] == category).mean())) for category in categories) if categories else 0.0
-        checks.append(result("plan_type_proportion_shift", "warning", shift, thresholds["category_proportion_points"], shift <= thresholds["category_proportion_points"], "pre_imputation"))
+        shift = max(
+            (
+                abs(float((frame["plan_type"] == category).mean()) - float((reference["plan_type"] == category).mean()))
+                for category in categories
+            ),
+            default=0.0,
+        )
+        checks.append(at_most("plan_type_proportion_shift", shift, thresholds["category_proportion_points"], "warning"))
 
     row_change = abs(len(frame) - len(reference)) / len(reference)
-    checks.append(result("row_count_shift", "warning", row_change, thresholds["row_count_change"], row_change <= thresholds["row_count_change"], "pre_imputation"))
+    checks.append(at_most("row_count_shift", row_change, thresholds["row_count_change"], "warning"))
     if "churned" in frame and "churned" in reference:
         churn_shift = abs(float(frame["churned"].mean()) - float(reference["churned"].mean()))
-        checks.append(result("churn_rate_shift", "warning", churn_shift, thresholds["churn_rate_change"], churn_shift <= thresholds["churn_rate_change"], "pre_imputation"))
+        checks.append(at_most("churn_rate_shift", churn_shift, thresholds["churn_rate_change"], "warning"))
     if reference_date is not None:
         gap = (file_date - reference_date).days
-        checks.append(result("date_gap", "warning", gap, 1, gap <= 1, "pre_imputation"))
+        checks.append(at_most("date_gap", gap, 1, "warning"))
     return checks

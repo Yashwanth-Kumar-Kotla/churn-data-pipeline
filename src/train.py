@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any
@@ -20,7 +17,7 @@ from sklearn.model_selection import GroupShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from src.storage import atomic_json
+from src.storage import atomic_json, atomic_write
 
 
 NUMERIC_FEATURES = [
@@ -86,15 +83,7 @@ def should_promote(challenger_roc_auc: float, champion_roc_auc: float, margin: f
 
 
 def atomic_joblib(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(dir=path.parent, suffix=".joblib", delete=False) as handle:
-        temporary_path = Path(handle.name)
-    try:
-        joblib.dump(payload, temporary_path)
-        os.replace(temporary_path, path)
-    except Exception:
-        temporary_path.unlink(missing_ok=True)
-        raise
+    atomic_write(path, lambda temporary_path: joblib.dump(payload, temporary_path))
 
 
 def train_and_evaluate(
@@ -156,4 +145,3 @@ def train_and_evaluate(
         atomic_joblib(champion_path, {"model": challenger, "metadata": metadata})
     atomic_json(artifact_dir / f"metrics_{latest_date}.json", metrics)
     return TrainingResult(True, "trained and evaluated", promoted, metrics)
-

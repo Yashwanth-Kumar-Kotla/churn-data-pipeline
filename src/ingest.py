@@ -26,11 +26,6 @@ def file_date_from_path(path: Path) -> date:
     return date.fromisoformat(match.group(1))
 
 
-def discover_raw_files(raw_dir: Path) -> list[RawFile]:
-    files = [RawFile(path, file_date_from_path(path)) for path in raw_dir.glob("*.csv")]
-    return sorted(files, key=lambda item: (item.file_date, item.path.name))
-
-
 def read_raw_csv(path: Path) -> pd.DataFrame:
     frame = pd.read_csv(path, encoding="utf-8-sig")
     frame.columns = frame.columns.str.strip()
