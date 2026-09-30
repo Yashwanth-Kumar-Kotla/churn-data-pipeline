@@ -6,7 +6,7 @@ I kept the model simple on purpose. The point of this project is the data contra
 
 ## Run it
 
-Use Python 3.14 or another version supported by the pinned dependencies.
+Use Python 3.11 or newer (tested on 3.11, 3.12 and 3.14).
 
 ```bash
 make setup
@@ -71,7 +71,7 @@ The synthetic label comes from a logistic probability. More days since login and
       normalize plan type, drop exact duplicates, repair small defects
                                |
                                v
-                  atomic Parquet write -> processed history -> manifest
+                    atomic Parquet write -> processed history
                                |
                                v
                           training gate
@@ -79,7 +79,8 @@ The synthetic label comes from a logistic probability. More days since login and
         gate denies training                     gate allows training
                   |                                      |
                   v                                      v
-             log skip reason          train challenger + dummy baseline
+       log skip reason and            train challenger + dummy baseline
+       record in manifest                            |
                                                      |
                                                      v
                      current champion and challenger score the same holdout
@@ -89,6 +90,9 @@ The synthetic label comes from a logistic probability. More days since login and
                                                      |
                                                      v
                                   versioned model artifacts + metrics JSON
+                                                     |
+                                                     v
+                                            record in manifest
 ```
 
 The file date comes from the filename, never from the system clock. Files are processed in date order. Each SHA-256 hash is recorded in `state/manifest.json`, so identical reruns are skipped. A corrected file with the same name but new contents has a new hash and is processed again.
@@ -99,10 +103,9 @@ For a passing file, the pipeline writes a date-keyed Parquet file atomically. Fo
 
 The most important choice is that quality checks see values before imputation. For example, a file with 35% missing `sessions_last_30d` values fails before median imputation could make it look complete. Cleaning repairs small defects and counts any rows dropped for missing training keys. Validation decides whether the file is acceptable at all.
 
-Training is allowed only when all three conditions are true:
+The gate runs after the Parquet write succeeds. It checks these two conditions:
 
 - Validation has no error-severity failures.
-- The processed Parquet write succeeded.
 - The processed history has at least 1,000 rows and 100 positive churn labels.
 
 Warnings do not block a run. Drift is a warning because a warning is useful evidence, while automatically rejecting a valid file based on a noisy comparison would be too aggressive.
