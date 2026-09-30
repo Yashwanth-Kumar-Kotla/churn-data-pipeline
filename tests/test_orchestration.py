@@ -100,6 +100,21 @@ def test_small_missing_key_rates_are_repaired_before_training(tmp_path: Path) ->
         assert cleaned[["user_id", "plan_type"]].notna().all().all()
 
 
+def test_valid_nulls_and_invalid_values_are_both_repaired_before_training(tmp_path: Path) -> None:
+    project = setup_project(tmp_path)
+    frame = normal_day("2026-09-24")
+    frame.loc[:99, "sessions_last_30d"] = None
+    frame.loc[100:118, "sessions_last_30d"] = -5
+    frame.to_csv(project / "data" / "raw" / "user_activity_2026-09-24.csv", index=False)
+
+    outcomes = run_pipeline(project)
+    cleaned = pd.read_parquet(project / "data" / "processed" / "user_activity_2026-09-24.parquet")
+
+    assert [outcome.status for outcome in outcomes] == ["processed"]
+    assert cleaned["sessions_last_30d"].notna().all()
+    assert (project / "models" / "metrics_2026-09-24.json").exists()
+
+
 def test_training_failure_does_not_mark_file_complete(tmp_path: Path, monkeypatch) -> None:
     project = setup_project(tmp_path)
     raw_path = project / "data" / "raw" / "user_activity_2026-09-24.csv"

@@ -45,6 +45,11 @@ def prepare_frame(frame: pd.DataFrame) -> pd.DataFrame:
 def clean_frame(frame: pd.DataFrame, config: dict[str, Any]) -> CleanResult:
     cleaned = prepare_frame(frame)
     actions: dict[str, int] = {}
+    original_null_rates = {
+        column: float(cleaned[column].isna().mean())
+        for column in IMPUTED_COLUMNS
+        if column in cleaned
+    }
 
     key_columns = [column for column in ("user_id", "plan_type") if column in cleaned]
     missing_key = cleaned[key_columns].isna().any(axis=1)
@@ -67,8 +72,9 @@ def clean_frame(frame: pd.DataFrame, config: dict[str, Any]) -> CleanResult:
     for column in IMPUTED_COLUMNS:
         if column not in cleaned:
             continue
-        null_rate = cleaned[column].isna().mean()
-        if 0 < null_rate <= null_limit:
+        # Validation limits raw nulls and invalid values separately. Repairing
+        # invalid values must not make an otherwise valid file skip imputation.
+        if cleaned[column].isna().any() and original_null_rates[column] <= null_limit:
             missing = int(cleaned[column].isna().sum())
             cleaned[column] = cleaned[column].fillna(cleaned[column].median())
             actions[f"{column}_imputed"] = missing
