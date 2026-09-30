@@ -7,7 +7,6 @@ from typing import Any
 
 import pandas as pd
 
-
 NUMERIC_COLUMNS = (
     "user_id",
     "sessions_last_30d",

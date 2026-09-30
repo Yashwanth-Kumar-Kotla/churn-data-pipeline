@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 FILENAME_PATTERN = re.compile(r"^user_activity_(\d{4}-\d{2}-\d{2})(?:_.+)?\.csv$")
 
 

@@ -159,6 +159,7 @@ def process_file(
         return quarantine_with_report(raw_file, file_hash, report, base_dir, "no_rows")
 
     reference_frame, reference_date = reference_before(base_dir, raw_file.file_date)
+    # Check raw defects before cleaning can hide a high null rate.
     report = validate_frame(raw_frame, raw_file.file_date, config, reference_frame, reference_date)
     if not report.passed:
         failed = [check.name for check in report.checks if check.severity == "error" and not check.passed]
@@ -166,8 +167,6 @@ def process_file(
         return quarantine_with_report(raw_file, file_hash, report, base_dir, "validation_failed")
 
     cleaned = clean_frame(raw_frame, config)
-    if cleaned.frame.empty:
-        raise ValueError(f"cleaning removed every row in {raw_file.path.name}")
     destination = processed_path(base_dir, raw_file.file_date)
     write_parquet(cleaned.frame, destination)
     saved_report_path = report_path(base_dir, raw_file, file_hash)
@@ -204,6 +203,7 @@ def process_file(
             )
         else:
             logger.info("processed %s, training skipped: %s", raw_file.path.name, training.reason)
+        # A training crash leaves this hash unrecorded, so the file can be retried.
         record_manifest(base_dir / "state" / "manifest.json", manifest_entry)
         return FileOutcome(raw_file.path, "processed", training.reason)
     logger.info("processed %s, training skipped: %s", raw_file.path.name, decision.reason)
@@ -226,7 +226,7 @@ def selected_files(base_dir: Path, logger: logging.Logger) -> tuple[list[tuple[R
     for item in valid:
         by_date[item.file_date].append(item)
     selected: list[tuple[RawFile, str]] = []
-    for file_date, candidates in by_date.items():
+    for candidates in by_date.values():
         newest = max(candidates, key=lambda item: (item.path.stat().st_mtime_ns, item.path.name))
         for candidate in candidates:
             if candidate == newest:

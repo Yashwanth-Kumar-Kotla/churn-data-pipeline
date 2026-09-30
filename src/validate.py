@@ -109,7 +109,8 @@ def validate_frame(
         ))
 
     if "plan_type" in frame:
-        unknown_rate = float((~frame["plan_type"].isin(config["allowed_plan_types"]) & frame["plan_type"].notna()).mean())
+        unknown = ~frame["plan_type"].isin(config["allowed_plan_types"]) & frame["plan_type"].notna()
+        unknown_rate = float(unknown.mean())
         checks.append(at_most("unknown_plan_type_rate", unknown_rate, quality["maximum_unknown_plan_rate"]))
 
     if "churned" in frame:
@@ -132,7 +133,10 @@ def validate_frame(
         mismatch_rate = float((frame["date"] != file_date).mean()) if rows else 1.0
         checks.append(at_most("date_matches_filename", mismatch_rate, 0.0))
 
-    numeric_features = [column for column in NUMERIC_COLUMNS if column not in {"user_id", "churned"} and column in frame]
+    numeric_features = [
+        column for column in NUMERIC_COLUMNS
+        if column not in {"user_id", "churned"} and column in frame
+    ]
     for column in numeric_features:
         variance = float(frame[column].dropna().var()) if frame[column].notna().sum() > 1 else 0.0
         checks.append(CheckResult(
@@ -140,7 +144,10 @@ def validate_frame(
         ))
 
     if "user_id" in frame:
-        feature_columns = [column for column in required_columns if column not in {"user_id", "date"} and column in frame]
+        feature_columns = [
+            column for column in required_columns
+            if column not in {"user_id", "date"} and column in frame
+        ]
         conflicts = 0
         for _, group in frame.dropna(subset=["user_id"]).groupby("user_id"):
             if len(group) > 1 and group[feature_columns].drop_duplicates().shape[0] > 1:
@@ -192,7 +199,10 @@ def drift_checks(
         categories = set(frame["plan_type"].dropna()) | set(reference["plan_type"].dropna())
         shift = max(
             (
-                abs(float((frame["plan_type"] == category).mean()) - float((reference["plan_type"] == category).mean()))
+                abs(
+                    float((frame["plan_type"] == category).mean())
+                    - float((reference["plan_type"] == category).mean())
+                )
                 for category in categories
             ),
             default=0.0,

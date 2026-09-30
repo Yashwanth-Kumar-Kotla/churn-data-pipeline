@@ -1,4 +1,5 @@
 from datetime import date
+
 import pandas as pd
 
 from src.config import load_config

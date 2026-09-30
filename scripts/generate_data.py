@@ -14,7 +14,6 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-
 NORMAL_DATES = ("2026-09-24", "2026-09-25", "2026-09-26", "2026-09-29")
 ALL_DATES = (*NORMAL_DATES[:3], "2026-09-27", "2026-09-28", NORMAL_DATES[3])
 PLAN_TYPES = np.array(["free", "basic", "pro"])

@@ -19,7 +19,6 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from src.storage import atomic_json, atomic_write
 
-
 NUMERIC_FEATURES = [
     "sessions_last_30d",
     "avg_session_minutes",
@@ -53,6 +52,7 @@ def build_model(seed: int) -> Pipeline:
 def split_history(frame: pd.DataFrame, seed: int) -> tuple[pd.DataFrame, pd.DataFrame] | None:
     dates = pd.to_datetime(frame["date"]).dt.date
     unique_dates = sorted(dates.dropna().unique())
+    # Hold out the newest day when possible to test on later activity.
     if len(unique_dates) >= 2:
         holdout_date = unique_dates[-1]
         test = frame.loc[dates == holdout_date].copy()
